@@ -41,12 +41,23 @@ def football_dag() :
         token = connection.extra_dejson
         print(token)
         token = token.get('X-Auth-Token')
-        dt = requests.get(f"{base_url}",
+        dt_raw = requests.get(f"{base_url}",
                          headers={"X-Auth-Token": token}
                         )
-        dt = dt.json() #SE PASAN LOS DATOS OBTENIDOS A UN ARCHIVO JSON
-        return dt 
+        dt_raw = dt_raw.json() #SE PASAN LOS DATOS OBTENIDOS A UN ARCHIVO JSON
+        return dt_raw
     data = extract_data() #SE GUARDAN LOS DATOS EN LA VARIABLE "DATA"
+
+    
+    @task
+    def clean_data(dt_raw) :
+        dt_list = []
+        for match in dt_raw["matches"] :
+            if match["homeTeam"]["id"] is not None and match["awayTeam"]["id"] is not None and match["competition"]["id"] is not None and match["season"]["id"] is not None  :
+                dt_list.append(match)
+        dt = {"matches" : dt_list}
+        return dt
+    clean = clean_data(data)
 
     #TAREAS DE MODELACION E INSERCCIÓN DE DATOS EN LAS TABLA
     @task
@@ -68,7 +79,7 @@ def football_dag() :
         with engine.connect() as connection:
             connection.execute(stmt_area, param_area)
             connection.commit()
-    areas = areas_table(data)
+    areas = areas_table(clean)
 
     #TAREAS DE MODELACION E INSERCCIÓN DE DATOS EN LAS TABLA
     @task
@@ -91,7 +102,7 @@ def football_dag() :
         with engine.connect() as connection:
             connection.execute(stmt_competition, param_competition)
             connection.commit()
-    competitions =competition_table(data)
+    competitions =competition_table(clean)
 
     #TAREAS DE MODELACION E INSERCCIÓN DE DATOS EN LAS TABLA
     @task
@@ -117,7 +128,7 @@ def football_dag() :
         with engine.connect() as connection:
             connection.execute(stmt_season, param_season)
             connection.commit()
-    seasons = season_table(data)
+    seasons = season_table(clean)
 
     #TAREAS DE MODELACION E INSERCCIÓN DE DATOS EN LAS TABLA
     @task 
@@ -148,7 +159,7 @@ def football_dag() :
         with engine.connect() as connection:
             connection.execute(stmt_teams, param_teams)
             connection.commit()
-    teams = teams_table(data)
+    teams = teams_table(clean)
 
     #TAREAS DE MODELACION E INSERCCIÓN DE DATOS EN LAS TABLA
     @task 
@@ -190,8 +201,8 @@ def football_dag() :
         with engine.connect() as connection:
             connection.execute(stmt_match, param_match)
             connection.commit()
-    matches = matches_table(data)
+    matches = matches_table(clean)
     #ORDEN DE EJECUCIÓN DE LAS TAREAS
-    data >> [areas, competitions, seasons, teams] >> matches 
+    data >> clean >> [areas, competitions, seasons, teams] >> matches 
 
 football_dag() 
