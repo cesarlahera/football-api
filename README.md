@@ -20,8 +20,6 @@ Este repo conserva ambas etapas a propósito, no solo la final. La versión manu
 
 ![Grafo de dependencias del DAG en la interfaz de Airflow](assets/football_api-graph.png)
 
-> Nota: la imagen se generó antes de añadir `clean_data`; el flujo actual es `extract_data → clean_data → [areas_table, competition_table, season_table, teams_table] → matches_table`.
-
 `extract_data` trae el JSON completo de la API. `clean_data` filtra los partidos que llegan con `homeTeam`, `awayTeam`, `competition` o `season` sin definir (caso real: cruces de eliminatoria, como Copa Libertadores, cuyos rivales aún no están decididos). `areas`, `competitions`, `seasons` y `teams` son independientes entre sí y se cargan en paralelo a partir de los datos ya limpios. `matches` referencia a las cuatro mediante `FOREIGN KEY`, así que espera a que todas terminen antes de ejecutarse.
 
 ## Stack
